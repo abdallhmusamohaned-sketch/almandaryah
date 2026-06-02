@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>منصة الرصد الميداني</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root {
+    --primary: #0D47A1;
+    --primary-light: #1565C0;
+    --primary-dark: #0A2E6E;
+    --accent: #00B0FF;
+    --accent2: #00E5FF;
+    --success: #00C853;
+    --warning: #FFD600;
+    --danger: #FF1744;
+    --surface: #0F1923;
+    --surface2: #162130;
+    --surface3: #1C2D3F;
+    --surface4: #223345;
+    --glass: rgba(22,33,48,0.85);
+    --text: #E8F1FF;
+    --text-muted: #7899BB;
+    --text-dim: #4A6685;
+    --border: rgba(0,176,255,0.15);
+    --border-strong: rgba(0,176,255,0.35);
+    --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --font: 'Cairo', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  html, body {
+    height:100%; width:100%;
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font);
+    overflow-x: hidden;
+  }
+
+  /* ─── HEADER ─── */
+  .app-header {
+    position: sticky; top:0; z-index:2000;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--surface2) 100%);
+    border-bottom: 1px solid var(--border-strong);
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+  .header-brand {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .header-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--primary));
+    border-radius: 10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 20px;
+    box-shadow: 0 4px 12px rgba(0,176,255,0.3);
+  }
+  .header-title { font-size: 18px; font-weight: 700; line-height:1.2; }
+  .header-sub { font-size: 11px; color: var(--text-muted); font-weight:400; }
+  .header-status {
+    display:flex; align-items:center; gap:6px;
+    font-size:12px; color: var(--text-muted);
+  }
+  .status-dot {
+    width:8px; height:8px; border-radius:50%;
+    background: var(--text-dim);
+    transition: all .3s;
+  }
+  .status-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  /* ─── TABS ─── */
+  .tab-bar {
+    display:flex;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top:65px; z-index:1500;
+  }
+  .tab-btn {
+    flex:1; padding:14px 8px;
+    background:transparent; border:none; color: var(--text-muted);
+    font-family: var(--font); font-size:13px; font-weight:600;
+    cursor:pointer; transition:all .25s;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    position:relative;
+  }
+  .tab-btn .tab-icon { font-size:20px; }
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn.active::after {
+    content:''; position:absolute; bottom:0; left:10%; right:10%;
+    height:3px; border-radius:3px 3px 0 0;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  /* ─── PANELS ─── */
+  .panel { display:none; animation: fadeIn .3s ease; }
+  .panel.active { display:block; }
+  @keyframes fadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
+
+  /* ─── MAP PANEL ─── */
+  #map-panel { position:relative; }
+  #map {
+    height: calc(100vh - 130px);
+    width:100%;
+  }
+  .map-fab {
+    position:absolute; bottom:20px; right:16px; z-index:1000;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .fab-btn {
+    width:54px; height:54px; border-radius:50%;
+    border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    transition: all .2s; -webkit-tap-highlight-color:transparent;
+  }
+  .fab-btn:active { transform:scale(.92); }
+  .fab-primary {
+    background: linear-gradient(135deg, var(--accent), var(--primary));
+    color:white;
+    width:60px; height:60px; font-size:26px;
+  }
+  .fab-secondary { background: var(--surface3); color: var(--text); border:1px solid var(--border-strong); }
+
+  .map-info-bar {
+    position:absolute; top:0; left:0; right:0; z-index:900;
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    display:flex; align-items:center; gap:8px;
+    font-size:13px;
+  }
+  .map-info-bar .coords {
+    flex:1; color: var(--accent); font-weight:600;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .basemap-toggle {
+    display:flex; background: var(--surface3); border-radius:20px; padding:3px;
+    border:1px solid var(--border);
+  }
+  .bm-btn {
+    padding:4px 10px; border-radius:16px; font-size:11px; font-weight:600;
+    background:transparent; border:none; color: var(--text-muted);
+    cursor:pointer; font-family:var(--font); transition:all .2s;
+  }
+  .bm-btn.active { background: var(--primary); color:white; }
+
+  /* ─── FORM PANEL ─── */
+  .form-panel {
+    padding: 16px;
+    padding-bottom: 100px;
+    max-width: 600px; margin:0 auto;
+  }
+  .section-header {
+    display:flex; align-items:center; gap:10px;
+    margin-bottom:20px; padding-bottom:12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-icon {
+    width:36px; height:36px; border-radius:10px;
+    background: linear-gradient(135deg, rgba(0,176,255,.2), rgba(13,71,161,.3));
+    border:1px solid var(--border-strong);
+    display:flex; align-items:center; justify-content:center; font-size:18px;
+  }
+  .section-title { font-size:17px; font-weight:700; }
+  .section-sub { font-size:12px; color: var(--text-muted); }
+
+  /* Location card in form */
+  .location-card {
+    background: linear-gradient(135deg, rgba(0,176,255,.08), rgba(13,71,161,.15));
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    padding:14px;
+    margin-bottom:20px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .location-card .loc-icon { font-size:28px; }
+  .location-card .loc-text { flex:1; }
+  .location-card .loc-coords { font-size:13px; color: var(--accent); font-weight:600; }
+  .location-card .loc-hint { font-size:11px; color: var(--text-muted); margin-top:2px; }
+  .location-card .loc-go {
+    padding:8px 14px; border-radius:20px;
+    background: var(--primary); color:white;
+    border:none; font-family:var(--font); font-size:12px; font-weight:700;
+    cursor:pointer; white-space:nowrap;
+    transition:all .2s;
+  }
+  .location-card .loc-go:active { transform:scale(.95); background:var(--primary-dark); }
+
+  /* Form fields */
+  .field-group { margin-bottom:14px; }
+  .field-label {
+    font-size:12px; font-weight:600; color: var(--text-muted);
+    margin-bottom:6px; display:flex; align-items:center; gap:4px;
+  }
+  .field-label .required { color:var(--danger); }
+  .field-input {
+    width:100%; padding:13px 14px;
+    background: var(--surface3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: var(--font); font-size:15px;
+    transition: all .2s; outline:none; -webkit-appearance:none;
+  }
+  .field-input:focus {
+    border-color: var(--accent);
+    background: var(--surface4);
+    box-shadow: 0 0 0 3px rgba(0,176,255,.12);
+  }
+  .field-input::placeholder { color: var(--text-dim); }
+  select.field-input { cursor:pointer; }
+
+  .fields-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+  /* Status pills */
+  .status-pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .status-pill {
+    padding:8px 14px; border-radius:20px;
+    border:1px solid var(--border); background: var(--surface3);
+    color: var(--text-muted); font-family:var(--font); font-size:13px;
+    cursor:pointer; transition:all .2s; font-weight:600;
+  }
+  .status-pill:active { transform:scale(.95); }
+  .status-pill.sel-done { border-color:var(--success); background:rgba(0,200,83,.1); color:var(--success); }
+  .status-pill.sel-cancel { border-color:var(--danger); background:rgba(255,23,68,.1); color:var(--danger); }
+  .status-pill.sel-delay { border-color:var(--warning); background:rgba(255,214,0,.1); color:var(--warning); }
+  .status-pill.sel-phone { border-color:var(--text-muted); background:rgba(120,153,187,.1); color:var(--text-muted); }
+
+  /* Photo section */
+  .photo-section {
+    background: var(--surface3); border:1px dashed var(--border-strong);
+    border-radius: var(--radius); padding:16px; text-align:center;
+  }
+  .photo-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color:white; border:none; border-radius: var(--radius-sm);
+    padding:12px 24px; font-family:var(--font); font-size:14px; font-weight:700;
+    cursor:pointer; transition:all .2s; display:inline-flex; align-items:center; gap:8px;
+  }
+  .photo-btn:active { transform:scale(.96); }
+  .photo-hint { font-size:11px; color: var(--text-dim); margin-top:6px; }
+  .photo-preview {
+    display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; justify-content:center;
+  }
+  .photo-thumb {
+    width:70px; height:70px; border-radius:8px; object-fit:cover;
+    border:2px solid var(--border-strong);
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
+  .photo-count-badge {
+    background: var(--accent); color: var(--surface);
+    border-radius:12px; padding:2px 10px;
+    font-size:12px; font-weight:700;
+    display:inline-block; margin-top:6px;
+  }
+
+  /* Submit btn */
+  .submit-btn {
+    width:100%; padding:16px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 60%);
+    color:white; border:none; border-radius: var(--radius);
+    font-family:var(--font); font-size:17px; font-weight:900;
+    cursor:pointer; margin-top:20px;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    box-shadow: 0 6px 24px rgba(0,176,255,.3);
+    transition:all .2s; letter-spacing:.5px;
+  }
+  .submit-btn:active { transform:scale(.98); box-shadow: none; }
+  .submit-btn:disabled { background: var(--surface4); color: var(--text-dim); box-shadow:none; cursor:not-allowed; }
+
+  /* ─── RECORDS PANEL ─── */
+  .records-panel { padding:12px 16px 100px; }
+  .records-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .records-count {
+    background: var(--surface3); border:1px solid var(--border);
+    border-radius:20px; padding:4px 12px; font-size:12px; color: var(--accent); font-weight:700;
+  }
+  .export-btn {
+    padding:8px 16px; border-radius:20px;
+    background: linear-gradient(135deg, var(--success), #00A843);
+    color:white; border:none; font-family:var(--font); font-size:13px; font-weight:700;
+    cursor:pointer; display:flex; align-items:center; gap:6px; transition:all .2s;
+  }
+  .export-btn:active { transform:scale(.95); }
+  .record-card {
+    background: var(--surface2); border:1px solid var(--border);
+    border-radius: var(--radius); padding:14px;
+    margin-bottom:10px; transition:all .2s;
+    animation: slideIn .3s ease;
+    position:relative; overflow:hidden;
+  }
+  .record-card::before {
+    content:''; position:absolute; right:0; top:0; bottom:0; width:4px;
+  }
+  .record-card.done::before { background: var(--success); }
+  .record-card.cancel::before { background: var(--danger); }
+  .record-card.delay::before { background: var(--warning); }
+  .record-card.phone::before { background: var(--text-dim); }
+  @keyframes slideIn { from{opacity:0; transform:translateX(20px)} to{opacity:1; transform:translateX(0)} }
+  .record-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .record-req { font-size:16px; font-weight:700; color: var(--text); }
+  .record-status-badge {
+    padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700;
+  }
+  .badge-done { background:rgba(0,200,83,.15); color:var(--success); border:1px solid rgba(0,200,83,.3); }
+  .badge-cancel { background:rgba(255,23,68,.15); color:var(--danger); border:1px solid rgba(255,23,68,.3); }
+  .badge-delay { background:rgba(255,214,0,.15); color:var(--warning); border:1px solid rgba(255,214,0,.3); }
+  .badge-phone { background:rgba(120,153,187,.1); color:var(--text-muted); border:1px solid var(--border); }
+  .record-info { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .record-field { font-size:12px; color: var(--text-muted); }
+  .record-field span { color: var(--text); font-weight:600; }
+  .record-coords { font-size:11px; color: var(--text-dim); margin-top:6px; }
+  .record-coords a { color: var(--accent); text-decoration:none; }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
+    background: var(--surface3); border:1px solid var(--border-strong);
+    border-radius:24px; padding:12px 24px;
+    font-size:14px; font-weight:600; color: var(--text);
+    box-shadow: var(--shadow);
+    z-index:9999; transition:transform .3s ease;
+    display:flex; align-items:center; gap:8px;
+    backdrop-filter:blur(20px); white-space:nowrap;
+  }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+  .toast.success { border-color:rgba(0,200,83,.4); color:var(--success); }
+  .toast.error { border-color:rgba(255,23,68,.4); color:var(--danger); }
+  .toast.info { border-color: var(--border-strong); color: var(--accent); }
+
+  /* ─── LOADING OVERLAY ─── */
+  .loading-overlay {
+    position:fixed; inset:0; z-index:9998;
+    background:rgba(15,25,35,.85); backdrop-filter:blur(8px);
+    display:none; align-items:center; justify-content:center;
+    flex-direction:column; gap:14px;
+  }
+  .loading-overlay.show { display:flex; }
+  .spinner {
+    width:48px; height:48px; border-radius:50%;
+    border:3px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .loading-text { font-size:14px; color: var(--text-muted); font-weight:600; }
+
+  /* ─── GPS TRACKING INDICATOR ─── */
+  .tracking-badge {
+    position:absolute; top:48px; left:50%; transform:translateX(-50%);
+    z-index:800;
+    background: var(--glass); backdrop-filter:blur(12px);
+    border:1px solid rgba(0,200,83,.3);
+    border-radius:20px; padding:6px 14px;
+    font-size:12px; font-weight:700; color: var(--success);
+    display:none; align-items:center; gap:6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.3);
+  }
+  .tracking-badge.show { display:flex; }
+
+  /* ─── GPS accuracy circle ─── */
+  .leaflet-popup-content-wrapper {
+    background: var(--surface3) !important; color: var(--text) !important;
+    border:1px solid var(--border-strong) !important; border-radius:12px !important;
+  }
+  .leaflet-popup-tip { background: var(--surface3) !important; }
+
+  /* Leaflet overrides */
+  .leaflet-control-zoom a {
+    background-color: var(--surface3) !important;
+    color: var(--text) !important;
+    border-color: var(--border) !important;
+  }
+
+  /* ─── Empty state ─── */
+  .empty-state {
+    text-align:center; padding:60px 20px;
+    color: var(--text-dim);
+  }
+  .empty-icon { font-size:60px; margin-bottom:14px; opacity:.4; }
+  .empty-text { font-size:15px; font-weight:600; }
+  .empty-sub { font-size:12px; margin-top:6px; }
+
+  /* ─── Mobile bottom safe area ─── */
+  @media (max-width:600px) {
+    .form-panel, .records-panel { padding-bottom:120px; }
+    #map { height:calc(100vh - 130px); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="header-brand">
+    <div class="header-icon">🗺️</div>
+    <div>
+      <div class="header-title">منصة الرصد الميداني</div>
+      <div class="header-sub">جمع البيانات الجغرافية</div>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="status-dot" id="gps-dot"></div>
+    <span id="gps-label">GPS</span>
+  </div>
+</header>
+
+<!-- TABS -->
+<nav class="tab-bar">
+  <button class="tab-btn active" data-tab="map-panel">
+    <span class="tab-icon">🗺️</span>الخريطة
+  </button>
+  <button class="tab-btn" data-tab="form-panel">
+    <span class="tab-icon">📋</span>الاستبيان
+  </button>
+  <button class="tab-btn" data-tab="records-panel">
+    <span class="tab-icon">📂</span>السجلات
+  </button>
+</nav>
+
+<!-- ══ MAP PANEL ══ -->
+<div id="map-panel" class="panel active">
+  <div class="map-info-bar">
+    <span>📍</span>
+    <span class="coords" id="map-coords-display">انقر على الخريطة لتحديد الموقع</span>
+    <div class="basemap-toggle">
+      <button class="bm-btn active" id="bm-osm">خريطة</button>
+      <button class="bm-btn" id="bm-sat">قمر</button>
+    </div>
+  </div>
+  <div id="map"></div>
+  <div class="tracking-badge" id="tracking-badge">
+    <span style="width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block;animation:pulse 1s infinite"></span>
+    تتبع GPS نشط
+  </div>
+  <div class="map-fab">
+    <button class="fab-btn fab-primary" id="btn-gps" title="موقعي">📍</button>
+    <button class="fab-btn fab-secondary" id="btn-zoom-in" title="تكبير">＋</button>
+    <button class="fab-btn fab-secondary" id="btn-zoom-out" title="تصغير">－</button>
+  </div>
+</div>
+
+<!-- ══ FORM PANEL ══ -->
+<div id="form-panel" class="panel">
+  <div class="form-panel">
+    <div class="section-header">
+      <div class="section-icon">📝</div>
+      <div>
+        <div class="section-title">بيانات الطلب</div>
+        <div class="section-sub">أدخل تفاصيل الزيارة الميدانية</div>
+      </div>
+    </div>
+
+    <!-- Location status card -->
+    <div class="location-card" id="location-card">
+      <div class="loc-icon">📍</div>
+      <div class="loc-text">
+        <div class="loc-coords" id="form-coords">لم يُحدد الموقع بعد</div>
+        <div class="loc-hint">حدد الموقع من تبويب الخريطة أو انقر لتحديده تلقائياً</div>
+      </div>
+      <button class="loc-go" id="form-gps-btn">📍 تحديد</button>
+    </div>
+
+    <!-- Fields -->
+    <div class="fields-row">
+      <div class="field-group">
+        <div class="field-label">رقم الطلب <span class="required">*</span></div>
+        <input class="field-input" type="text" id="request-number" placeholder="مثال: 1234"/>
+      </div>
+      <div class="field-group">
+        <div class="field-label">رقم الهاتف <span class="required">*</span></div>
+        <input class="field-input" type="tel" id="phone" placeholder="05xxxxxxxx"/>
+      </div>
+    </div>
+    <div class="field-group">
+      <div class="field-label">اسم مقدم الطلب <span class="required">*</span></div>
+      <input class="field-input" type="text" id="name" placeholder="الاسم الكامل"/>
+    </div>
+    <div class="field-group">
+      <div class="field-label">اسم الأخصائي <span class="required">*</span></div>
+      <input class="field-input" type="text" id="specialist" placeholder="اسم الأخصائي"/>
+    </div>
+
+    <!-- Status pills -->
+    <div class="field-group">
+      <div class="field-label">حالة الطلب <span class="required">*</span></div>
+      <div class="status-pills">
+        <button type="button" class="status-pill" data-val="تم التنفيذ" data-cls="sel-done">✅ تم التنفيذ</button>
+        <button type="button" class="status-pill" data-val="أُلغي" data-cls="sel-cancel">❌ أُلغي</button>
+        <button type="button" class="status-pill" data-val="تأجيل" data-cls="sel-delay">⏳ تأجيل</button>
+        <button type="button" class="status-pill" data-val="الهاتف مغلق" data-cls="sel-phone">📵 الهاتف مغلق</button>
+      </div>
+      <input type="hidden" id="status-hidden"/>
+    </div>
+
+    <!-- Photos -->
+    <div class="field-group">
+      <div class="field-label">الصور الميدانية</div>
+      <div class="photo-section">
+        <button class="photo-btn" id="open-camera">
+          <span>📷</span> التقاط صور
+        </button>
+        <input type="file" id="photo-input" accept="image/*" capture="environment" multiple style="display:none"/>
+        <div class="photo-hint">يمكن التقاط أو اختيار عدة صور</div>
+        <div class="photo-preview" id="photo-preview"></div>
+        <div id="photo-count" style="display:none" class="photo-count-badge"></div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <button class="submit-btn" id="submit-btn">
+      <span>📤</span> إرسال البيانات
+    </button>
+  </div>
+</div>
+
+<!-- ══ RECORDS PANEL ══ -->
+<div id="records-panel" class="panel">
+  <div class="records-panel">
+    <div class="records-header">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px;font-weight:700">السجلات</span>
+        <span class="records-count" id="records-count">0</span>
+      </div>
+      <button class="export-btn" id="export-btn">
+        <span>📊</span> تصدير Excel
+      </button>
+    </div>
+    <div id="records-list">
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <div class="empty-text">لا توجد سجلات بعد</div>
+        <div class="empty-sub">قم بإضافة بيانات ميدانية من تبويب الاستبيان</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">جاري الإرسال...</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- SCRIPTS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ─── CONFIG ────────────────────────────────────────────────────
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwIn0_ygGwKfFPKm7QnT7005vEs_nopYMFiRX1tKaSfnoYgMLVhkdEK5GUzJZuT7iLZ/exec';
+
+// ─── STATE ─────────────────────────────────────────────────────
+let selectedLatLng = null;
+let marker = null;
+let accuracyCircle = null;
+let watchId = null;
+let selectedStatus = '';
+let capturedPhotos = [];
+let records = JSON.parse(localStorage.getItem('fieldRecords') || '[]');
+
+// ─── MAP SETUP ─────────────────────────────────────────────────
+const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap', maxZoom: 19
+});
+const satLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+  maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'], attribution: '© Google Satellite'
+});
+
+const map = L.map('map', {
+  center: [24.7136, 46.6753], zoom: 10,
+  layers: [osmLayer], zoomControl: false
+});
+
+// Custom marker
+const markerIcon = L.divIcon({
+  html: `<div style="
+    width:36px;height:36px;border-radius:50% 50% 50% 0;
+    background:linear-gradient(135deg,#00B0FF,#0D47A1);
+    transform:rotate(-45deg);
+    box-shadow:0 4px 16px rgba(0,176,255,.5);
+    border:3px solid white;
+  "></div>`,
+  iconSize:[36,36], iconAnchor:[18,36], className:''
+});
+
+function setMapMarker(latlng) {
+  if (marker) map.removeLayer(marker);
+  if (accuracyCircle) map.removeLayer(accuracyCircle);
+  selectedLatLng = latlng;
+  marker = L.marker([latlng.lat, latlng.lng], {icon: markerIcon}).addTo(map);
+  marker.bindPopup(`<b>الموقع المحدد</b><br>${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`).openPopup();
+  const coordsText = `${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
+  document.getElementById('map-coords-display').textContent = coordsText;
+  document.getElementById('form-coords').textContent = coordsText;
+  document.getElementById('gps-dot').classList.add('active');
+  document.getElementById('gps-label').textContent = 'محدد';
+}
+
+map.on('click', e => setMapMarker(e.latlng));
+
+// Basemap toggle
+document.getElementById('bm-osm').addEventListener('click', () => {
+  map.removeLayer(satLayer); map.addLayer(osmLayer);
+  document.getElementById('bm-osm').classList.add('active');
+  document.getElementById('bm-sat').classList.remove('active');
+});
+document.getElementById('bm-sat').addEventListener('click', () => {
+  map.removeLayer(osmLayer); map.addLayer(satLayer);
+  document.getElementById('bm-sat').classList.add('active');
+  document.getElementById('bm-osm').classList.remove('active');
+});
+
+// FABs
+document.getElementById('btn-zoom-in').addEventListener('click', () => map.zoomIn());
+document.getElementById('btn-zoom-out').addEventListener('click', () => map.zoomOut());
+
+// ─── GPS LIVE TRACKING ──────────────────────────────────────────
+function startGPSTracking() {
+  if (!navigator.geolocation) { showToast('❌ المتصفح لا يدعم GPS', 'error'); return; }
+  document.getElementById('gps-label').textContent = 'جاري...';
+
+  // Single shot first for speed
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setMapMarker(ll);
+      map.setView([ll.lat, ll.lng], 17, { animate: true });
+
+      // Add accuracy circle
+      if (accuracyCircle) map.removeLayer(accuracyCircle);
+      accuracyCircle = L.circle([ll.lat, ll.lng], {
+        radius: pos.coords.accuracy,
+        color: '#00B0FF', fillColor: '#00B0FF', fillOpacity: 0.08,
+        weight: 1, dashArray: '4,4'
+      }).addTo(map);
+
+      showToast('✅ تم تحديد موقعك بدقة ' + Math.round(pos.coords.accuracy) + 'م', 'success');
+      document.getElementById('tracking-badge').classList.add('show');
+
+      // Watch for continuous updates
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+      watchId = navigator.geolocation.watchPosition(
+        p2 => {
+          const l2 = { lat: p2.coords.latitude, lng: p2.coords.longitude };
+          setMapMarker(l2);
+          if (accuracyCircle) {
+            accuracyCircle.setLatLng([l2.lat, l2.lng]);
+            accuracyCircle.setRadius(p2.coords.accuracy);
+          }
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
+      );
+    },
+    err => {
+      let msg = 'خطأ في تحديد الموقع';
+      if (err.code === 1) msg = '⚠️ الرجاء السماح بالوصول إلى الموقع';
+      else if (err.code === 2) msg = '⚠️ تعذر تحديد الموقع، تأكد من تفعيل GPS';
+      else if (err.code === 3) msg = '⚠️ انتهت مهلة تحديد الموقع';
+      showToast(msg, 'error');
+      document.getElementById('gps-label').textContent = 'GPS';
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+document.getElementById('btn-gps').addEventListener('click', startGPSTracking);
+document.getElementById('form-gps-btn').addEventListener('click', () => {
+  startGPSTracking();
+  switchTab('map-panel');
+});
+
+// ─── TABS ────────────────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector(`[data-tab="${id}"]`).classList.add('active');
+  if (id === 'map-panel') setTimeout(() => map.invalidateSize(), 100);
+  if (id === 'records-panel') renderRecords();
+}
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// ─── STATUS PILLS ────────────────────────────────────────────────
+const statusMap = {
+  'تم التنفيذ': { cls: 'sel-done', badge: 'badge-done', card: 'done' },
+  'أُلغي':       { cls: 'sel-cancel', badge: 'badge-cancel', card: 'cancel' },
+  'تأجيل':       { cls: 'sel-delay', badge: 'badge-delay', card: 'delay' },
+  'الهاتف مغلق': { cls: 'sel-phone', badge: 'badge-phone', card: 'phone' }
+};
+document.querySelectorAll('.status-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.status-pill').forEach(p => {
+      p.classList.remove('sel-done','sel-cancel','sel-delay','sel-phone');
+    });
+    pill.classList.add(pill.dataset.cls);
+    selectedStatus = pill.dataset.val;
+    document.getElementById('status-hidden').value = selectedStatus;
+  });
+});
+
+// ─── PHOTOS ─────────────────────────────────────────────────────
+document.getElementById('open-camera').addEventListener('click', () => {
+  document.getElementById('photo-input').click();
+});
+document.getElementById('photo-input').addEventListener('change', function() {
+  const files = Array.from(this.files);
+  capturedPhotos = [];
+  const preview = document.getElementById('photo-preview');
+  preview.innerHTML = '';
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      capturedPhotos.push(e.target.result);
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.className = 'photo-thumb';
+      preview.appendChild(img);
+      const countEl = document.getElementById('photo-count');
+      countEl.style.display = 'inline-block';
+      countEl.textContent = `${capturedPhotos.length} صورة`;
+    };
+    reader.readAsDataURL(file);
+  });
+});
+
+// ─── SUBMIT ──────────────────────────────────────────────────────
+document.getElementById('submit-btn').addEventListener('click', async () => {
+  const reqNum = document.getElementById('request-number').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const name = document.getElementById('name').value.trim();
+  const specialist = document.getElementById('specialist').value.trim();
+
+  if (!reqNum || !phone || !name || !specialist) {
+    showToast('⚠️ يرجى ملء جميع الحقول المطلوبة', 'error'); return;
+  }
+  if (!selectedLatLng) {
+    showToast('⚠️ يرجى تحديد الموقع أولاً', 'error'); return;
+  }
+  if (!selectedStatus) {
+    showToast('⚠️ يرجى اختيار حالة الطلب', 'error'); return;
+  }
+
+  const executionDate = new Date().toLocaleString('ar-SA', {
+    year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit'
+  });
+
+  const entry = {
+    id: Date.now(),
+    requestNumber: reqNum, phone, name, specialist,
+    status: selectedStatus, executionDate,
+    lat: selectedLatLng.lat, lng: selectedLatLng.lng,
+    photos: [...capturedPhotos]
+  };
+
+  showLoading('جاري الإرسال إلى قاعدة البيانات...');
+
+  // Build FormData for Google Apps Script
+  const formData = new FormData();
+  formData.append('requestNumber', reqNum);
+  formData.append('phone', phone);
+  formData.append('name', name);
+  formData.append('specialist', specialist);
+  formData.append('status', selectedStatus);
+  formData.append('executionDate', executionDate);
+  formData.append('lat', selectedLatLng.lat);
+  formData.append('lng', selectedLatLng.lng);
+  formData.append('photoCount', capturedPhotos.length);
+
+  // Add photo files
+  const photoFiles = document.getElementById('photo-input').files;
+  for (let i = 0; i < photoFiles.length; i++) {
+    formData.append('photo_' + i, photoFiles[i]);
+  }
+
+  try {
+    const res = await fetch(SCRIPT_URL, { method: 'POST', body: formData });
+    const txt = await res.text();
+    console.log('Server response:', txt);
+
+    // Save locally regardless
+    records.unshift(entry);
+    localStorage.setItem('fieldRecords', JSON.stringify(records));
+
+    hideLoading();
+    showToast('✅ تم الإرسال بنجاح', 'success');
+    resetForm();
+    setTimeout(() => switchTab('records-panel'), 1200);
+  } catch (err) {
+    console.error(err);
+    // Still save locally
+    records.unshift(entry);
+    localStorage.setItem('fieldRecords', JSON.stringify(records));
+    hideLoading();
+    showToast('💾 حُفظ محلياً — تعذر الإرسال للسيرفر', 'info');
+    resetForm();
+    setTimeout(() => switchTab('records-panel'), 1200);
+  }
+});
+
+function resetForm() {
+  document.getElementById('request-number').value = '';
+  document.getElementById('phone').value = '';
+  document.getElementById('name').value = '';
+  document.getElementById('specialist').value = '';
+  document.getElementById('status-hidden').value = '';
+  document.getElementById('photo-preview').innerHTML = '';
+  document.getElementById('photo-count').style.display = 'none';
+  document.getElementById('photo-input').value = '';
+  selectedStatus = '';
+  capturedPhotos = [];
+  document.querySelectorAll('.status-pill').forEach(p =>
+    p.classList.remove('sel-done','sel-cancel','sel-delay','sel-phone')
+  );
+}
+
+// ─── RECORDS RENDER ──────────────────────────────────────────────
+function renderRecords() {
+  const list = document.getElementById('records-list');
+  document.getElementById('records-count').textContent = records.length;
+  if (!records.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">لا توجد سجلات بعد</div><div class="empty-sub">قم بإضافة بيانات ميدانية من تبويب الاستبيان</div></div>`;
+    return;
+  }
+  list.innerHTML = records.map(r => {
+    const s = statusMap[r.status] || { badge:'badge-phone', card:'phone' };
+    const mapsUrl = `https://maps.google.com/?q=${r.lat},${r.lng}`;
+    return `
+    <div class="record-card ${s.card}">
+      <div class="record-top">
+        <div class="record-req">طلب #${r.requestNumber}</div>
+        <span class="record-status-badge ${s.badge}">${r.status}</span>
+      </div>
+      <div class="record-info">
+        <div class="record-field">الاسم: <span>${r.name}</span></div>
+        <div class="record-field">الهاتف: <span>${r.phone}</span></div>
+        <div class="record-field">الأخصائي: <span>${r.specialist}</span></div>
+        <div class="record-field">التاريخ: <span>${r.executionDate}</span></div>
+      </div>
+      <div class="record-coords">
+        📍 <a href="${mapsUrl}" target="_blank">${r.lat.toFixed(6)}, ${r.lng.toFixed(6)} — عرض على الخريطة</a>
+        ${r.photos && r.photos.length ? ` | 📷 ${r.photos.length} صورة` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── EXPORT ──────────────────────────────────────────────────────
+document.getElementById('export-btn').addEventListener('click', () => {
+  if (!records.length) { showToast('لا توجد بيانات للتصدير', 'error'); return; }
+
+  const grouped = {};
+  records.forEach(r => {
+    if (!grouped[r.specialist]) grouped[r.specialist] = [];
+    grouped[r.specialist].push(r);
+  });
+
+  for (const sp in grouped) {
+    const rows = [['رقم الطلب','رقم الهاتف','اسم مقدم الطلب','الأخصائي','الحالة','تاريخ التنفيذ','خط العرض','خط الطول','عدد الصور']];
+    grouped[sp].forEach(r => rows.push([r.requestNumber, r.phone, r.name, r.specialist, r.status, r.executionDate, r.lat, r.lng, r.photos ? r.photos.length : 0]));
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'البيانات');
+    XLSX.writeFile(wb, `بيانات_${sp}_${new Date().toLocaleDateString('ar')}.xlsx`);
+  }
+  showToast('✅ تم تصدير الملفات بنجاح', 'success');
+});
+
+// ─── HELPERS ─────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+function showLoading(msg='جاري التحميل...') {
+  document.getElementById('loading-text').textContent = msg;
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loading').classList.remove('show');
+}
+
+// ─── INIT ────────────────────────────────────────────────────────
+renderRecords();
+// Auto-resize map on load
+setTimeout(() => map.invalidateSize(), 300);
+</script>
+</body>
+</html>
