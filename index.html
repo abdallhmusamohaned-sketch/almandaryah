@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>شركة المندرية للمقاولات -الرصد الميداني </title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root {
+  --primary:#0D47A1; --primary-light:#1565C0; --primary-dark:#0A2E6E;
+  --accent:#00B0FF; --accent2:#00E5FF;
+  --success:#00C853; --warning:#FFD600; --danger:#FF1744; --info:#7C4DFF;
+  --surface:#0B1520; --surface2:#111E2D; --surface3:#172539; --surface4:#1D2F47;
+  --glass:rgba(17,30,45,0.92); --text:#E8F4FF; --text-muted:#6A90B5; --text-dim:#3A5878;
+  --border:rgba(0,176,255,0.12); --border-strong:rgba(0,176,255,0.3);
+  --shadow:0 8px 40px rgba(0,0,0,0.5);
+  --r:14px; --r-sm:9px; --font:'Cairo',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;width:100%;background:var(--surface);color:var(--text);font-family:var(--font);overflow-x:hidden}
+
+/* ── HEADER ── */
+.app-header{
+  position:sticky;top:0;z-index:3000;
+  background:linear-gradient(135deg,var(--primary-dark) 0%,var(--surface2) 100%);
+  border-bottom:1px solid var(--border-strong);
+  padding:10px 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 4px 24px rgba(0,0,0,0.4);
+}
+.hbrand{display:flex;align-items:center;gap:10px}
+.hicon{
+  width:38px;height:38px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),var(--primary));
+  display:flex;align-items:center;justify-content:center;font-size:19px;
+  box-shadow:0 4px 14px rgba(0,176,255,0.35);
+}
+.htitle{font-size:16px;font-weight:800;line-height:1.2}
+.hsub{font-size:10px;color:var(--text-muted)}
+.hstatus{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted)}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--text-dim);transition:all .3s}
+.sdot.on{background:var(--success);box-shadow:0 0 8px var(--success);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── TABS ── */
+.tab-bar{
+  display:flex;background:var(--surface2);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:59px;z-index:2000;
+  overflow-x:auto;scrollbar-width:none;
+}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab-btn{
+  flex:1;min-width:70px;padding:11px 6px;
+  background:transparent;border:none;color:var(--text-muted);
+  font-family:var(--font);font-size:11px;font-weight:700;
+  cursor:pointer;transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  position:relative;white-space:nowrap;
+}
+.tab-btn .ti{font-size:18px}
+.tab-btn.active{color:var(--accent)}
+.tab-btn.active::after{
+  content:'';position:absolute;bottom:0;left:15%;right:15%;
+  height:2px;border-radius:2px 2px 0 0;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  box-shadow:0 0 8px var(--accent);
+}
+
+/* ── PANELS ── */
+.panel{display:none;animation:fadeUp .25s ease}
+.panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── MAP ── */
+#map-panel{position:relative}
+#map{height:calc(100vh - 105px);width:100%}
+.map-topbar{
+  position:absolute;top:0;left:0;right:0;z-index:900;
+  background:var(--glass);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  padding:7px 12px;display:flex;align-items:center;gap:8px;font-size:12px;
+}
+.map-coords{flex:1;color:var(--accent);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bm-toggle{display:flex;background:var(--surface3);border-radius:18px;padding:2px;border:1px solid var(--border)}
+.bm-btn{
+  padding:4px 10px;border-radius:14px;font-size:10px;font-weight:700;
+  background:transparent;border:none;color:var(--text-muted);
+  cursor:pointer;font-family:var(--font);transition:all .2s;
+}
+.bm-btn.active{background:var(--primary);color:white}
+.track-badge{
+  position:absolute;top:42px;left:50%;transform:translateX(-50%);z-index:800;
+  background:var(--glass);backdrop-filter:blur(12px);
+  border:1px solid rgba(0,200,83,.35);border-radius:18px;
+  padding:5px 14px;font-size:11px;font-weight:700;color:var(--success);
+  display:none;align-items:center;gap:6px;
+}
+.track-badge.show{display:flex}
+.map-fab{position:absolute;bottom:16px;right:14px;z-index:900;display:flex;flex-direction:column;gap:9px}
+.fab{
+  width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:21px;
+  box-shadow:0 4px 18px rgba(0,0,0,0.45);transition:all .18s;
+}
+.fab:active{transform:scale(.9)}
+.fab-main{background:linear-gradient(135deg,var(--accent),var(--primary));color:white;width:58px;height:58px;font-size:24px}
+.fab-sec{background:var(--surface3);color:var(--text);border:1px solid var(--border-strong)}
+
+/* ── FORM LAYOUT ── */
+.fp{padding:14px 14px 110px;max-width:600px;margin:0 auto}
+.sec-hdr{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.sec-ico{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,rgba(0,176,255,.18),rgba(13,71,161,.25));
+  border:1px solid var(--border-strong);
+  display:flex;align-items:center;justify-content:center;font-size:17px;
+}
+.sec-ttl{font-size:15px;font-weight:800}
+.sec-sub{font-size:11px;color:var(--text-muted)}
+
+/* TYPE SELECTOR */
+.type-selector{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+.type-card{
+  background:var(--surface3);border:1.5px solid var(--border);
+  border-radius:var(--r);padding:12px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  cursor:pointer;transition:all .2s;
+}
+.type-card:active{transform:scale(.97)}
+.type-card .tc-icon{font-size:24px}
+.type-card .tc-label{font-size:12px;font-weight:700;color:var(--text-muted);text-align:center}
+.type-card.sel-complaint{border-color:#FF6B35;background:rgba(255,107,53,.1);.tc-label{color:#FF6B35}}
+.type-card.sel-complaint .tc-label{color:#FF6B35}
+.type-card.sel-ext{border-color:var(--accent);background:rgba(0,176,255,.08)}
+.type-card.sel-ext .tc-label{color:var(--accent)}
+.type-card.sel-case{border-color:var(--success);background:rgba(0,200,83,.08)}
+.type-card.sel-case .tc-label{color:var(--success)}
+.type-card.sel-focus{border-color:var(--warning);background:rgba(255,214,0,.08)}
+.type-card.sel-focus .tc-label{color:var(--warning)}
+
+/* LOC CARD */
+.loc-card{
+  background:linear-gradient(135deg,rgba(0,176,255,.07),rgba(13,71,161,.12));
+  border:1px solid var(--border-strong);border-radius:var(--r);
+  padding:12px;margin-bottom:16px;
+  display:flex;align-items:center;gap:10px;
+}
+.loc-card .lic{font-size:26px}
+.loc-card .lt{flex:1}
+.loc-card .lcoords{font-size:12px;color:var(--accent);font-weight:700}
+.loc-card .lhint{font-size:10px;color:var(--text-muted);margin-top:2px}
+.loc-go{
+  padding:7px 12px;border-radius:18px;background:var(--primary);color:white;
+  border:none;font-family:var(--font);font-size:11px;font-weight:800;
+  cursor:pointer;white-space:nowrap;transition:all .18s;
+}
+.loc-go:active{background:var(--primary-dark);transform:scale(.95)}
+
+/* FIELDS */
+.fg{margin-bottom:12px}
+.fl{font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:5px;display:flex;align-items:center;gap:3px}
+.fl .req{color:var(--danger)}
+.fi{
+  width:100%;padding:12px 13px;
+  background:var(--surface3);border:1px solid var(--border);
+  border-radius:var(--r-sm);color:var(--text);
+  font-family:var(--font);font-size:14px;
+  transition:all .2s;outline:none;-webkit-appearance:none;
+}
+.fi:focus{border-color:var(--accent);background:var(--surface4);box-shadow:0 0 0 3px rgba(0,176,255,.1)}
+.fi::placeholder{color:var(--text-dim)}
+.fi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* STATUS PILLS */
+.spills{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px}
+.spill{
+  padding:7px 13px;border-radius:18px;
+  border:1px solid var(--border);background:var(--surface3);
+  color:var(--text-muted);font-family:var(--font);font-size:12px;
+  cursor:pointer;transition:all .18s;font-weight:700;
+}
+.spill:active{transform:scale(.95)}
+.spill.sel-done{border-color:var(--success);background:rgba(0,200,83,.1);color:var(--success)}
+.spill.sel-cancel{border-color:var(--danger);background:rgba(255,23,68,.1);color:var(--danger)}
+.spill.sel-delay{border-color:var(--warning);background:rgba(255,214,0,.1);color:var(--warning)}
+.spill.sel-phone{border-color:var(--text-muted);background:rgba(120,153,187,.1);color:var(--text-muted)}
+
+/* PHOTO */
+.photo-sec{
+  background:var(--surface3);border:1.5px dashed var(--border-strong);
+  border-radius:var(--r);padding:14px;text-align:center;
+}
+.photo-btn{
+  background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+  color:white;border:none;border-radius:var(--r-sm);
+  padding:11px 22px;font-family:var(--font);font-size:13px;font-weight:800;
+  cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:7px;
+}
+.photo-btn:active{transform:scale(.96)}
+.photo-hint{font-size:10px;color:var(--text-dim);margin-top:5px}
+.photo-grid{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;justify-content:center}
+.pthumb-wrap{position:relative;width:72px;height:72px}
+.pthumb{width:72px;height:72px;border-radius:8px;object-fit:cover;border:2px solid var(--border-strong);display:block}
+.pthumb-del{
+  position:absolute;top:-5px;left:-5px;width:20px;height:20px;
+  border-radius:50%;background:var(--danger);color:white;border:none;
+  font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-weight:900;
+}
+.photo-badge{
+  background:var(--accent);color:var(--surface);
+  border-radius:10px;padding:2px 10px;font-size:11px;font-weight:800;
+  display:inline-block;margin-top:5px;
+}
+
+/* SUBMIT */
+.submit-btn{
+  width:100%;padding:15px;
+  background:linear-gradient(135deg,var(--accent) 0%,var(--primary) 60%);
+  color:white;border:none;border-radius:var(--r);
+  font-family:var(--font);font-size:16px;font-weight:900;
+  cursor:pointer;margin-top:18px;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  box-shadow:0 6px 24px rgba(0,176,255,.28);
+  transition:all .18s;letter-spacing:.3px;
+}
+.submit-btn:active{transform:scale(.98);box-shadow:none}
+.submit-btn:disabled{background:var(--surface4);color:var(--text-dim);box-shadow:none;cursor:not-allowed}
+
+/* ── RECORDS ── */
+.rp{padding:12px 14px 110px}
+.rhdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.rcnt{background:var(--surface3);border:1px solid var(--border);border-radius:18px;padding:3px 12px;font-size:11px;color:var(--accent);font-weight:800}
+.exp-btn{
+  padding:7px 14px;border-radius:18px;
+  background:linear-gradient(135deg,var(--success),#00A843);
+  color:white;border:none;font-family:var(--font);font-size:12px;font-weight:800;
+  cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .18s;
+}
+.exp-btn:active{transform:scale(.95)}
+.rcard{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);padding:13px;
+  margin-bottom:9px;animation:sli .25s ease;
+  position:relative;overflow:hidden;
+}
+.rcard::before{content:'';position:absolute;right:0;top:0;bottom:0;width:4px}
+.rcard.done::before{background:var(--success)}
+.rcard.cancel::before{background:var(--danger)}
+.rcard.delay::before{background:var(--warning)}
+.rcard.phone::before{background:var(--text-dim)}
+.rcard.complaint::before{background:#FF6B35}
+.rcard.ext::before{background:var(--accent)}
+.rcard.case::before{background:var(--success)}
+.rcard.focus::before{background:var(--warning)}
+@keyframes sli{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+.rtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;flex-wrap:wrap;gap:5px}
+.rreq{font-size:15px;font-weight:800}
+.rbadges{display:flex;gap:5px;flex-wrap:wrap}
+.rbadge{padding:3px 9px;border-radius:18px;font-size:10px;font-weight:800}
+.b-done{background:rgba(0,200,83,.15);color:var(--success);border:1px solid rgba(0,200,83,.3)}
+.b-cancel{background:rgba(255,23,68,.15);color:var(--danger);border:1px solid rgba(255,23,68,.3)}
+.b-delay{background:rgba(255,214,0,.15);color:var(--warning);border:1px solid rgba(255,214,0,.3)}
+.b-phone{background:rgba(120,153,187,.1);color:var(--text-muted);border:1px solid var(--border)}
+.b-complaint{background:rgba(255,107,53,.15);color:#FF6B35;border:1px solid rgba(255,107,53,.3)}
+.b-ext{background:rgba(0,176,255,.15);color:var(--accent);border:1px solid rgba(0,176,255,.3)}
+.b-case{background:rgba(0,200,83,.1);color:var(--success);border:1px solid rgba(0,200,83,.2)}
+.b-focus{background:rgba(255,214,0,.1);color:var(--warning);border:1px solid rgba(255,214,0,.25)}
+.rinfo{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.rf{font-size:11px;color:var(--text-muted)}
+.rf span{color:var(--text);font-weight:700}
+.rcoords{font-size:10px;color:var(--text-dim);margin-top:6px}
+.rcoords a{color:var(--accent);text-decoration:none}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(70px);
+  background:var(--surface3);border:1px solid var(--border-strong);
+  border-radius:22px;padding:11px 22px;
+  font-size:13px;font-weight:700;color:var(--text);
+  box-shadow:var(--shadow);z-index:9999;transition:transform .28s ease;
+  display:flex;align-items:center;gap:7px;
+  backdrop-filter:blur(20px);max-width:90vw;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:rgba(0,200,83,.4);color:var(--success)}
+.toast.error{border-color:rgba(255,23,68,.4);color:var(--danger)}
+.toast.info{color:var(--accent)}
+
+/* ── LOADING ── */
+.lov{
+  position:fixed;inset:0;z-index:9998;
+  background:rgba(11,21,32,.88);backdrop-filter:blur(10px);
+  display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:14px;
+}
+.lov.show{display:flex}
+.spin{
+  width:46px;height:46px;border-radius:50%;
+  border:3px solid var(--border);border-top-color:var(--accent);
+  animation:sp .7s linear infinite;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+.ltext{font-size:13px;color:var(--text-muted);font-weight:700}
+
+/* ── GPS PERMISSION PROMPT ── */
+.gps-prompt{
+  position:fixed;inset:0;z-index:9995;
+  background:rgba(11,21,32,.95);backdrop-filter:blur(12px);
+  display:none;align-items:center;justify-content:center;
+}
+.gps-prompt.show{display:flex}
+.gps-card{
+  background:var(--surface2);border:1px solid var(--border-strong);
+  border-radius:20px;padding:28px 24px;text-align:center;
+  max-width:320px;width:90%;
+}
+.gps-card .gi{font-size:56px;margin-bottom:14px}
+.gps-card h3{font-size:18px;font-weight:800;margin-bottom:8px}
+.gps-card p{font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:20px}
+.gps-allow{
+  width:100%;padding:13px;border-radius:12px;
+  background:linear-gradient(135deg,var(--accent),var(--primary));
+  color:white;border:none;font-family:var(--font);font-size:15px;font-weight:800;
+  cursor:pointer;margin-bottom:8px;
+}
+.gps-skip{
+  width:100%;padding:10px;border-radius:12px;
+  background:transparent;color:var(--text-muted);border:1px solid var(--border);
+  font-family:var(--font);font-size:13px;cursor:pointer;
+}
+
+/* Leaflet overrides */
+.leaflet-popup-content-wrapper{background:var(--surface3)!important;color:var(--text)!important;border:1px solid var(--border-strong)!important;border-radius:12px!important}
+.leaflet-popup-tip{background:var(--surface3)!important}
+.leaflet-control-zoom a{background-color:var(--surface3)!important;color:var(--text)!important;border-color:var(--border)!important}
+
+/* Empty state */
+.empty{text-align:center;padding:50px 20px;color:var(--text-dim)}
+.empty-i{font-size:54px;margin-bottom:12px;opacity:.4}
+
+/* hidden canvas for watermark */
+#wm-canvas{display:none}
+</style>
+</head>
+<body>
+
+<!-- GPS PERMISSION PROMPT -->
+<div class="gps-prompt" id="gps-prompt">
+  <div class="gps-card">
+    <div class="gi">📍</div>
+    <h3>تحديد الموقع</h3>
+    <p>تحتاج المنصة إلى إذن الوصول لموقعك الجغرافي لتسجيل إحداثيات الزيارات الميدانية بدقة.</p>
+    <button class="gps-allow" id="gps-allow-btn">✅ السماح بالوصول للموقع</button>
+    <button class="gps-skip" id="gps-skip-btn">تخطي الآن</button>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="hbrand">
+    <div class="hicon">🗺️</div>
+    <div>
+      <div class="htitle">منصة الرصد الميداني</div>
+      <div class="hsub">جمع البيانات الجغرافية</div>
+    </div>
+  </div>
+  <div class="hstatus">
+    <div class="sdot" id="gps-dot"></div>
+    <span id="gps-label">GPS</span>
+  </div>
+</header>
+
+<!-- TABS -->
+<nav class="tab-bar">
+  <button class="tab-btn active" data-tab="map-panel"><span class="ti">🗺️</span>الخريطة</button>
+  <button class="tab-btn" data-tab="form-panel"><span class="ti">📋</span>الاستبيان</button>
+  <button class="tab-btn" data-tab="records-panel"><span class="ti">📂</span>السجلات</button>
+</nav>
+
+<!-- MAP PANEL -->
+<div id="map-panel" class="panel active">
+  <div class="map-topbar">
+    <span>📍</span>
+    <span class="map-coords" id="map-coords-display">انقر على الخريطة لتحديد الموقع</span>
+    <div class="bm-toggle">
+      <button class="bm-btn active" id="bm-osm">خريطة</button>
+      <button class="bm-btn" id="bm-sat">قمر</button>
+    </div>
+  </div>
+  <div id="map"></div>
+  <div class="track-badge" id="track-badge">
+    <span style="width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block;animation:blink 1s infinite"></span>
+    تتبع GPS نشط
+  </div>
+  <div class="map-fab">
+    <button class="fab fab-main" id="btn-gps">📍</button>
+    <button class="fab fab-sec" id="btn-zi">＋</button>
+    <button class="fab fab-sec" id="btn-zo">－</button>
+  </div>
+</div>
+
+<!-- FORM PANEL -->
+<div id="form-panel" class="panel">
+<div class="fp">
+
+  <!-- نوع البلاغ -->
+  <div class="sec-hdr">
+    <div class="sec-ico">🏷️</div>
+    <div><div class="sec-ttl">نوع الطلب</div><div class="sec-sub">اختر تصنيف الزيارة الميدانية</div></div>
+  </div>
+  <div class="type-selector">
+    <div class="type-card" data-type="بلاغ" data-cls="sel-complaint">
+      <span class="tc-icon">🚨</span><span class="tc-label">بلاغ</span>
+    </div>
+    <div class="type-card" data-type="طلب خارجي 940" data-cls="sel-ext">
+      <span class="tc-icon">📞</span><span class="tc-label">طلب خارجي 940</span>
+    </div>
+    <div class="type-card" data-type="حالة" data-cls="sel-case">
+      <span class="tc-icon">📋</span><span class="tc-label">حالة</span>
+    </div>
+    <div class="type-card" data-type="بؤر" data-cls="sel-focus">
+      <span class="tc-icon">🎯</span><span class="tc-label">بؤر</span>
+    </div>
+  </div>
+  <input type="hidden" id="req-type"/>
+
+  <!-- الموقع -->
+  <div class="loc-card">
+    <div class="lic">📍</div>
+    <div class="lt">
+      <div class="lcoords" id="form-coords">لم يُحدد الموقع بعد</div>
+      <div class="lhint">حدد الموقع من الخريطة أو اضغط تحديد</div>
+    </div>
+    <button class="loc-go" id="form-gps-btn">📍 تحديد</button>
+  </div>
+
+  <!-- بيانات الطلب -->
+  <div class="sec-hdr" style="margin-top:4px">
+    <div class="sec-ico">📝</div>
+    <div><div class="sec-ttl">بيانات الطلب</div><div class="sec-sub">أدخل تفاصيل الزيارة</div></div>
+  </div>
+
+  <div class="fi-row">
+    <div class="fg">
+      <div class="fl">رقم الطلب <span class="req">*</span></div>
+      <input class="fi" type="text" id="request-number" placeholder="1234"/>
+    </div>
+    <div class="fg">
+      <div class="fl">رقم الهاتف <span class="req">*</span></div>
+      <input class="fi" type="tel" id="phone" placeholder="05xxxxxxxx"/>
+    </div>
+  </div>
+  <div class="fg">
+    <div class="fl">اسم مقدم الطلب <span class="req">*</span></div>
+    <input class="fi" type="text" id="name" placeholder="الاسم الكامل"/>
+  </div>
+  <div class="fg">
+    <div class="fl">اسم الأخصائي <span class="req">*</span></div>
+    <input class="fi" type="text" id="specialist" placeholder="اسم الأخصائي"/>
+  </div>
+
+  <!-- حالة الطلب -->
+  <div class="fg">
+    <div class="fl">حالة الطلب <span class="req">*</span></div>
+    <div class="spills">
+      <button type="button" class="spill" data-val="تم التنفيذ" data-cls="sel-done">✅ تم التنفيذ</button>
+      <button type="button" class="spill" data-val="أُلغي" data-cls="sel-cancel">❌ أُلغي</button>
+      <button type="button" class="spill" data-val="تأجيل" data-cls="sel-delay">⏳ تأجيل</button>
+      <button type="button" class="spill" data-val="الهاتف مغلق" data-cls="sel-phone">📵 الهاتف مغلق</button>
+    </div>
+    <input type="hidden" id="status-hidden"/>
+  </div>
+
+  <!-- الصور -->
+  <div class="fg">
+    <div class="fl">الصور الميدانية</div>
+    <div class="photo-sec">
+      <button class="photo-btn" id="open-camera">📷 التقاط صور</button>
+      <input type="file" id="photo-input" accept="image/*" multiple style="display:none"/>
+      <div class="photo-hint">سيتم طباعة التاريخ والموقع والأخصائي على كل صورة تلقائياً</div>
+      <div class="photo-grid" id="photo-preview"></div>
+      <div id="photo-count" style="display:none" class="photo-badge"></div>
+    </div>
+  </div>
+
+  <button class="submit-btn" id="submit-btn"><span>📤</span> إرسال البيانات</button>
+</div>
+</div>
+
+<!-- RECORDS PANEL -->
+<div id="records-panel" class="panel">
+<div class="rp">
+  <div class="rhdr">
+    <div style="display:flex;align-items:center;gap:7px">
+      <span style="font-size:15px;font-weight:800">السجلات</span>
+      <span class="rcnt" id="records-count">0</span>
+    </div>
+    <button class="exp-btn" id="export-btn">📊 Excel</button>
+  </div>
+  <div id="records-list">
+    <div class="empty"><div class="empty-i">📭</div><div style="font-size:14px;font-weight:700">لا توجد سجلات بعد</div></div>
+  </div>
+</div>
+</div>
+
+<!-- LOADING -->
+<div class="lov" id="loading">
+  <div class="spin"></div>
+  <div class="ltext" id="loading-text">جاري الإرسال...</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- Hidden canvas for watermark -->
+<canvas id="wm-canvas"></canvas>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ══════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKVG47Bvc4yVHVbze-WyzAkyj9o5aTNebW90jvfw0DR1b3N_B8cW3e-BLKv-ejssNkPw/exec';
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let selectedLatLng = null;
+let marker = null;
+let accCircle = null;
+let watchId = null;
+let selectedStatus = '';
+let selectedType = '';
+let watermarkedPhotos = []; // base64 watermarked
+let records = JSON.parse(localStorage.getItem('fRecords') || '[]');
+
+// ══════════════════════════════════════════
+// GPS PERMISSION FLOW
+// ══════════════════════════════════════════
+function checkGPSPermission() {
+  if (!navigator.geolocation) return;
+  if (navigator.permissions) {
+    navigator.permissions.query({ name: 'geolocation' }).then(res => {
+      if (res.state === 'granted') {
+        startGPS();
+      } else if (res.state === 'prompt') {
+        document.getElementById('gps-prompt').classList.add('show');
+      }
+      // denied: show prompt to guide user
+      else if (res.state === 'denied') {
+        showToast('⚠️ GPS محظور — فعّله من إعدادات المتصفح', 'error');
+      }
+    });
+  } else {
+    // iOS fallback — just try
+    document.getElementById('gps-prompt').classList.add('show');
+  }
+}
+
+document.getElementById('gps-allow-btn').addEventListener('click', () => {
+  document.getElementById('gps-prompt').classList.remove('show');
+  startGPS();
+});
+document.getElementById('gps-skip-btn').addEventListener('click', () => {
+  document.getElementById('gps-prompt').classList.remove('show');
+});
+
+// ══════════════════════════════════════════
+// MAP
+// ══════════════════════════════════════════
+const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'© OpenStreetMap', maxZoom:19
+});
+const satLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+  maxZoom:20, subdomains:['mt0','mt1','mt2','mt3'], attribution:'© Google'
+});
+
+const map = L.map('map', {
+  center:[24.7136,46.6753], zoom:10, layers:[osmLayer], zoomControl:false
+});
+
+const mkIcon = L.divIcon({
+  html:`<div style="width:34px;height:34px;border-radius:50% 50% 50% 0;
+    background:linear-gradient(135deg,#00B0FF,#0D47A1);
+    transform:rotate(-45deg);
+    box-shadow:0 4px 14px rgba(0,176,255,.55);
+    border:3px solid white;"></div>`,
+  iconSize:[34,34], iconAnchor:[17,34], className:''
+});
+
+function setMarker(latlng) {
+  if (marker) map.removeLayer(marker);
+  selectedLatLng = latlng;
+  marker = L.marker([latlng.lat, latlng.lng], {icon:mkIcon}).addTo(map);
+  marker.bindPopup(`<b>الموقع المحدد</b><br>${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`).openPopup();
+  const t = `${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
+  document.getElementById('map-coords-display').textContent = t;
+  document.getElementById('form-coords').textContent = t;
+  document.getElementById('gps-dot').classList.add('on');
+  document.getElementById('gps-label').textContent = 'محدد';
+}
+
+map.on('click', e => setMarker(e.latlng));
+
+document.getElementById('bm-osm').addEventListener('click', () => {
+  map.removeLayer(satLayer); map.addLayer(osmLayer);
+  document.getElementById('bm-osm').classList.add('active');
+  document.getElementById('bm-sat').classList.remove('active');
+});
+document.getElementById('bm-sat').addEventListener('click', () => {
+  map.removeLayer(osmLayer); map.addLayer(satLayer);
+  document.getElementById('bm-sat').classList.add('active');
+  document.getElementById('bm-osm').classList.remove('active');
+});
+document.getElementById('btn-zi').addEventListener('click', () => map.zoomIn());
+document.getElementById('btn-zo').addEventListener('click', () => map.zoomOut());
+
+// ══════════════════════════════════════════
+// GPS TRACKING
+// ══════════════════════════════════════════
+function startGPS() {
+  if (!navigator.geolocation) { showToast('❌ GPS غير مدعوم', 'error'); return; }
+  document.getElementById('gps-label').textContent = '...';
+  showLoading('جاري تحديد الموقع...');
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    hideLoading();
+    const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    setMarker(ll);
+    map.setView([ll.lat, ll.lng], 17, { animate: true });
+
+    if (accCircle) map.removeLayer(accCircle);
+    accCircle = L.circle([ll.lat, ll.lng], {
+      radius: pos.coords.accuracy,
+      color:'#00B0FF', fillColor:'#00B0FF', fillOpacity:.07,
+      weight:1, dashArray:'4,4'
+    }).addTo(map);
+
+    showToast('✅ موقعك محدد — دقة ' + Math.round(pos.coords.accuracy) + 'م', 'success');
+    document.getElementById('track-badge').classList.add('show');
+
+    if (watchId) navigator.geolocation.clearWatch(watchId);
+    watchId = navigator.geolocation.watchPosition(p2 => {
+      const l2 = { lat: p2.coords.latitude, lng: p2.coords.longitude };
+      setMarker(l2);
+      if (accCircle) { accCircle.setLatLng([l2.lat, l2.lng]); accCircle.setRadius(p2.coords.accuracy); }
+    }, ()=>{}, { enableHighAccuracy:true, maximumAge:3000, timeout:15000 });
+
+  }, err => {
+    hideLoading();
+    let msg = '⚠️ تعذر تحديد الموقع';
+    if (err.code === 1) msg = '⚠️ يجب السماح بالوصول للموقع في الإعدادات';
+    else if (err.code === 2) msg = '⚠️ تأكد من تفعيل GPS في جهازك';
+    else if (err.code === 3) msg = '⚠️ انتهت المهلة — حاول مرة أخرى';
+    showToast(msg, 'error');
+    document.getElementById('gps-label').textContent = 'GPS';
+  }, { enableHighAccuracy:true, timeout:20000, maximumAge:0 });
+}
+
+document.getElementById('btn-gps').addEventListener('click', startGPS);
+document.getElementById('form-gps-btn').addEventListener('click', () => {
+  switchTab('map-panel');
+  setTimeout(startGPS, 300);
+});
+
+// ══════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════
+function switchTab(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector(`[data-tab="${id}"]`).classList.add('active');
+  if (id === 'map-panel') setTimeout(() => map.invalidateSize(), 120);
+  if (id === 'records-panel') renderRecords();
+}
+document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+// ══════════════════════════════════════════
+// TYPE CARDS
+// ══════════════════════════════════════════
+document.querySelectorAll('.type-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.type-card').forEach(c =>
+      c.classList.remove('sel-complaint','sel-ext','sel-case','sel-focus')
+    );
+    card.classList.add(card.dataset.cls);
+    selectedType = card.dataset.type;
+    document.getElementById('req-type').value = selectedType;
+  });
+});
+
+// ══════════════════════════════════════════
+// STATUS PILLS
+// ══════════════════════════════════════════
+document.querySelectorAll('.spill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.spill').forEach(p =>
+      p.classList.remove('sel-done','sel-cancel','sel-delay','sel-phone')
+    );
+    pill.classList.add(pill.dataset.cls);
+    selectedStatus = pill.dataset.val;
+    document.getElementById('status-hidden').value = selectedStatus;
+  });
+});
+
+// ══════════════════════════════════════════
+// WATERMARK ON PHOTOS
+// ══════════════════════════════════════════
+function addWatermark(file, lat, lng, specialist, callback) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.getElementById('wm-canvas');
+      // Max dimension for mobile performance
+      const maxW = 1280;
+      let w = img.width, h = img.height;
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // Watermark bar at bottom
+      const barH = Math.max(52, h * 0.085);
+      ctx.fillStyle = 'rgba(10,20,35,0.82)';
+      ctx.fillRect(0, h - barH, w, barH);
+
+      // Accent line
+      ctx.fillStyle = '#00B0FF';
+      ctx.fillRect(0, h - barH, w, 3);
+
+      const fs = Math.max(13, Math.round(barH * 0.28));
+      ctx.font = `bold ${fs}px Cairo, Arial`;
+      ctx.fillStyle = '#E8F4FF';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('ar-SA', {year:'numeric', month:'2-digit', day:'2-digit'});
+      const timeStr = now.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'});
+      const coordStr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+      const pad = Math.round(w * 0.02);
+      const midY = h - barH / 2;
+
+      // Right side: date & time
+      ctx.fillStyle = '#00E5FF';
+      ctx.font = `bold ${fs}px Cairo, Arial`;
+      ctx.fillText(dateStr + '  ' + timeStr, w - pad, midY - fs * 0.4);
+
+      // Specialist
+      ctx.fillStyle = '#E8F4FF';
+      ctx.font = `${Math.round(fs*0.85)}px Cairo, Arial`;
+      ctx.fillText('الأخصائي: ' + (specialist || '---'), w - pad, midY + fs * 0.55);
+
+      // Left side: coords
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#FFD600';
+      ctx.font = `bold ${Math.round(fs*0.8)}px Cairo, Arial`;
+      ctx.fillText('📍 ' + coordStr, pad, midY - fs * 0.4);
+
+      // Type badge if available
+      if (selectedType) {
+        ctx.fillStyle = 'rgba(0,176,255,0.25)';
+        ctx.fillRect(pad, h - barH + 3, Math.round(fs * selectedType.length * 0.65), barH - 6);
+        ctx.fillStyle = '#00B0FF';
+        ctx.font = `bold ${Math.round(fs*0.8)}px Cairo, Arial`;
+        ctx.fillText(selectedType, pad + 4, midY + fs * 0.55);
+      }
+
+      callback(canvas.toDataURL('image/jpeg', 0.88));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ══════════════════════════════════════════
+// PHOTO INPUT
+// ══════════════════════════════════════════
+document.getElementById('open-camera').addEventListener('click', () => {
+  // On mobile: prefer camera
+  const input = document.getElementById('photo-input');
+  if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    input.setAttribute('capture', 'environment');
+  } else {
+    input.removeAttribute('capture');
+  }
+  input.click();
+});
+
+document.getElementById('photo-input').addEventListener('change', function() {
+  const files = Array.from(this.files);
+  if (!files.length) return;
+
+  const specialist = document.getElementById('specialist').value.trim() || 'الأخصائي';
+  const lat = selectedLatLng ? selectedLatLng.lat : 0;
+  const lng = selectedLatLng ? selectedLatLng.lng : 0;
+
+  watermarkedPhotos = [];
+  const preview = document.getElementById('photo-preview');
+  preview.innerHTML = '';
+  document.getElementById('photo-count').style.display = 'none';
+
+  let processed = 0;
+  files.forEach((file, idx) => {
+    addWatermark(file, lat, lng, specialist, b64 => {
+      watermarkedPhotos[idx] = b64;
+      processed++;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'pthumb-wrap';
+      const img = document.createElement('img');
+      img.src = b64; img.className = 'pthumb';
+      const del = document.createElement('button');
+      del.className = 'pthumb-del'; del.textContent = '×';
+      del.addEventListener('click', () => {
+        watermarkedPhotos[idx] = null;
+        wrap.remove();
+        const remaining = watermarkedPhotos.filter(p => p !== null).length;
+        const c = document.getElementById('photo-count');
+        if (remaining === 0) c.style.display = 'none';
+        else { c.style.display = 'inline-block'; c.textContent = remaining + ' صورة'; }
+      });
+      wrap.appendChild(img); wrap.appendChild(del);
+      preview.appendChild(wrap);
+
+      if (processed === files.length) {
+        const c = document.getElementById('photo-count');
+        c.style.display = 'inline-block';
+        c.textContent = processed + ' صورة (بعلامة مائية)';
+      }
+    });
+  });
+});
+
+// ══════════════════════════════════════════
+// SUBMIT — send as JSON with base64 photos
+// ══════════════════════════════════════════
+document.getElementById('submit-btn').addEventListener('click', async () => {
+  const reqNum = document.getElementById('request-number').value.trim();
+  const phone  = document.getElementById('phone').value.trim();
+  const name   = document.getElementById('name').value.trim();
+  const spec   = document.getElementById('specialist').value.trim();
+
+  if (!reqNum || !phone || !name || !spec) { showToast('⚠️ يرجى ملء جميع الحقول', 'error'); return; }
+  if (!selectedLatLng) { showToast('⚠️ يرجى تحديد الموقع أولاً', 'error'); return; }
+  if (!selectedStatus)  { showToast('⚠️ يرجى اختيار حالة الطلب', 'error'); return; }
+  if (!selectedType)    { showToast('⚠️ يرجى اختيار نوع الطلب', 'error'); return; }
+
+  const execDate = new Date().toLocaleString('ar-SA', {
+    year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'
+  });
+
+  const photos = watermarkedPhotos.filter(p => p !== null);
+
+  const entry = {
+    id: Date.now(), requestNumber:reqNum, phone, name,
+    specialist:spec, status:selectedStatus, reqType:selectedType,
+    executionDate:execDate, lat:selectedLatLng.lat, lng:selectedLatLng.lng,
+    photoCount: photos.length
+  };
+
+  showLoading('جاري الإرسال والرفع...');
+
+  // ── إرسال كـ FormData (الطريقة الصحيحة مع Apps Script) ──
+  const fd = new FormData();
+  fd.append('requestNumber', reqNum);
+  fd.append('phone', phone);
+  fd.append('name', name);
+  fd.append('specialist', spec);
+  fd.append('status', selectedStatus);
+  fd.append('reqType', selectedType);
+  fd.append('executionDate', execDate);
+  fd.append('lat', selectedLatLng.lat);
+  fd.append('lng', selectedLatLng.lng);
+  fd.append('photoCount', photos.length);
+  photos.forEach((b64, i) => fd.append('photo_' + i, b64));
+
+  try {
+    const res = await fetch(SCRIPT_URL, { method:'POST', body: fd });
+    const txt = await res.text();
+    console.log('Response:', txt);
+
+    records.unshift(entry);
+    localStorage.setItem('fRecords', JSON.stringify(records));
+    hideLoading();
+    showToast('✅ تم الإرسال بنجاح', 'success');
+    resetForm();
+    setTimeout(() => switchTab('records-panel'), 1200);
+  } catch(err) {
+    console.error(err);
+    records.unshift(entry);
+    localStorage.setItem('fRecords', JSON.stringify(records));
+    hideLoading();
+    showToast('💾 حُفظ محلياً — تعذر الإرسال', 'info');
+    resetForm();
+    setTimeout(() => switchTab('records-panel'), 1200);
+  }
+});
+
+function resetForm() {
+  ['request-number','phone','name','specialist'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('status-hidden').value = '';
+  document.getElementById('req-type').value = '';
+  document.getElementById('photo-preview').innerHTML = '';
+  document.getElementById('photo-count').style.display = 'none';
+  document.getElementById('photo-input').value = '';
+  selectedStatus = ''; selectedType = '';
+  watermarkedPhotos = [];
+  document.querySelectorAll('.spill').forEach(p => p.classList.remove('sel-done','sel-cancel','sel-delay','sel-phone'));
+  document.querySelectorAll('.type-card').forEach(c => c.classList.remove('sel-complaint','sel-ext','sel-case','sel-focus'));
+}
+
+// ══════════════════════════════════════════
+// RECORDS
+// ══════════════════════════════════════════
+const typeCardMap = {
+  'بلاغ':           { card:'complaint', badge:'b-complaint' },
+  'طلب خارجي 940':  { card:'ext',       badge:'b-ext' },
+  'حالة':           { card:'case',      badge:'b-case' },
+  'بؤر':            { card:'focus',     badge:'b-focus' }
+};
+const statusCardMap = {
+  'تم التنفيذ': { card:'done',   badge:'b-done' },
+  'أُلغي':       { card:'cancel', badge:'b-cancel' },
+  'تأجيل':       { card:'delay',  badge:'b-delay' },
+  'الهاتف مغلق': { card:'phone',  badge:'b-phone' }
+};
+
+function renderRecords() {
+  const list = document.getElementById('records-list');
+  document.getElementById('records-count').textContent = records.length;
+  if (!records.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-i">📭</div><div style="font-size:14px;font-weight:700">لا توجد سجلات</div></div>`;
+    return;
+  }
+  list.innerHTML = records.map(r => {
+    const sc = statusCardMap[r.status] || { card:'phone', badge:'b-phone' };
+    const tc = typeCardMap[r.reqType]   || { card:'ext',   badge:'b-ext' };
+    const mUrl = `https://maps.google.com/?q=${r.lat},${r.lng}`;
+    return `
+    <div class="rcard ${sc.card}">
+      <div class="rtop">
+        <div class="rreq">طلب #${r.requestNumber}</div>
+        <div class="rbadges">
+          ${r.reqType ? `<span class="rbadge ${tc.badge}">${r.reqType}</span>` : ''}
+          <span class="rbadge ${sc.badge}">${r.status}</span>
+        </div>
+      </div>
+      <div class="rinfo">
+        <div class="rf">الاسم: <span>${r.name}</span></div>
+        <div class="rf">الهاتف: <span>${r.phone}</span></div>
+        <div class="rf">الأخصائي: <span>${r.specialist}</span></div>
+        <div class="rf">التاريخ: <span>${r.executionDate}</span></div>
+      </div>
+      <div class="rcoords">
+        📍 <a href="${mUrl}" target="_blank">${parseFloat(r.lat).toFixed(5)}, ${parseFloat(r.lng).toFixed(5)} — Google Maps</a>
+        ${r.photoCount ? ` | 📷 ${r.photoCount} صورة` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════
+document.getElementById('export-btn').addEventListener('click', () => {
+  if (!records.length) { showToast('لا توجد بيانات', 'error'); return; }
+  const grouped = {};
+  records.forEach(r => {
+    const k = r.specialist || 'عام';
+    if (!grouped[k]) grouped[k] = [];
+    grouped[k].push(r);
+  });
+  for (const sp in grouped) {
+    const rows = [['رقم الطلب','رقم الهاتف','مقدم الطلب','الأخصائي','نوع الطلب','الحالة','التاريخ','خط العرض','خط الطول','الصور']];
+    grouped[sp].forEach(r => rows.push([r.requestNumber,r.phone,r.name,r.specialist,r.reqType||'',r.status,r.executionDate,r.lat,r.lng,r.photoCount||0]));
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'البيانات');
+    XLSX.writeFile(wb, `رصد_${sp}_${new Date().toLocaleDateString('ar')}.xlsx`);
+  }
+  showToast('✅ تم التصدير', 'success');
+});
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+let tTimer;
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  clearTimeout(tTimer); tTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+function showLoading(msg='جاري...') {
+  document.getElementById('loading-text').textContent = msg;
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoading() { document.getElementById('loading').classList.remove('show'); }
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+renderRecords();
+setTimeout(() => map.invalidateSize(), 300);
+// Show GPS prompt on load
+checkGPSPermission();
+</script>
+</body>
+</html>
